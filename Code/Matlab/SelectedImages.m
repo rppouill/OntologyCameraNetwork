@@ -1,6 +1,8 @@
 clear all; close all; clc;
 
-DATASET_PATH = '/home/ropouillard/Documents/Thesis_Working/DataSet/Lobna_Dataset/9393062/'
+
+DATASET_PATH = ... % Path to the dataset
+%DATASET_PATH = '/home/ropouillard/Documents/Thesis_Working/DataSet/Lobna_Dataset/9393062/'
 Nb_Camera = 4;
 Nb_Person = 9;
 

@@ -12,10 +12,17 @@ This script is separate into three part
 2. Create the background model of each camera
 3. Create the foreground of person and save the images
 
+The dataset is stored in the `Camera` variable, which is of type `Cell`. Its array size is `Nb_Camera*Nb_Person`. To access the video of person 3 from camera 2, you would use `Camera{2, 3}`.
 
 ### Create the background model
 
 The background model is computed by averaging all images when the scene has no one present. (l. 24 to 34). 
+
+For each camera, the number of images to be averaged is different and is defined by the `interest` variable (line 22).
+
+```matlab
+interest = [6,17,6,13];
+```
 
 ### Create the foreground of person and save the images.
 
