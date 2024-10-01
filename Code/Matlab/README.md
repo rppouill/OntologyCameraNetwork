@@ -20,9 +20,11 @@ The background model is computed by averaging all images when the scene has no o
 ### Create the foreground of person and save the images.
 
 For each pixel in a new frame, a correlation coefficient $\rho(p)$ is estimated. It represents the correlation between the pixel of the captured image and the corresponding pixel of the background model within the sliding window around the concerned pixel:
+
 $$\rho(p)^t = \frac{(\sum_{p' \in \omega(p)} I(p')^t * I_{bg}(p)^t)^2}{(\sum_{p' \in \omega(p)} I(p')^t)^2 * (\sum_{p' \in \omega(p)}I_{bg}(p')^t)^2}$$ 
 
-where $\omega(p)$ is a sliding square window centered at $p$ and $\rho(p)^t$ is the correlation coefficient between captured image pixel $I(p′)^t$ and background image pixel $I_{bg}(p′)^t$ over the pixels in $\omega(p)$. n this step, the pixel can be classified as background or foreground following:
+where $\omega(p)$ is a sliding square window centered at $p$ and $\rho(p)^t$ is the correlation coefficient between captured image pixel $I(p′)^t$ and background image pixel $I_{bg}(p′)^t$ over the pixels in $\omega(p)$. n this step, the pixel can be classified as background or foreground following: 
+
 $$FG(p) = \begin{cases} I(p), & \text{if} s = s + 1 \text{and} \varphi(p) < \text{min} \\ 
 0, & \text{otherwise} \end{cases}$$
 
