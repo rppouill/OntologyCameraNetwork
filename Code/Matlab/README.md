@@ -23,8 +23,7 @@ For each pixel in a new frame, a correlation coefficient $\rho(p)$ is estimated.
 $$\rho(p)^t = \frac{(\sum_{p' \in \omega(p)} I(p')^t * I_{bg}(p)^t)^2}{(\sum_{p' \in \omega(p)} I(p')^t)^2 * (\sum_{p' \in \omega(p)}I_{bg}(p')^t)^2}$$ 
 
 where $\omega(p)$ is a sliding square window centered at $p$ and $\rho(p)^t$ is the correlation coefficient between captured image pixel $I(p′)^t$ and background image pixel $I_{bg}(p′)^t$ over the pixels in $\omega(p)$. n this step, the pixel can be classified as background or foreground following:
-$$FG(p) = \begin{cases} I(p), & \text{if} s = s + 1 \text{and} \varphi(p) < \text{min} \\ 0, & \text{otherwise} 
-\end{cases}$$
+$$FG(p) = \begin{cases} I(p), & \text{if} s = s + 1 \text{and} \varphi(p) < \text{min} \\ 0, & \text{otherwise} \end{cases}$$
 
 where $\rho_{min}$ is the correlation threshold fixed between 0 and 1, and $s$ is the number of pixels constructing this foreground.
 
