@@ -1,7 +1,5 @@
 clear all; close all; % clc;
-addpath('./tools'); addpath('./Transformation'); 
-addpath('./Distance');
-addpath('./Transformation/Temporal');
+addpath('./tools');
 
 DATASET_PATH = './dataSet/';
 DATASET_NAME = 'ImageSelectedwithD/';
