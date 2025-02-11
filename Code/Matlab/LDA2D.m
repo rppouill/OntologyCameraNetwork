@@ -78,7 +78,6 @@ end
 %    end
 %end
 
-%dataSet = camera;
 TRAIN_Ration = 0.4;
 N_TRAIN      = round(NB_PERSON * TRAIN_Ration);
 N_TEST       = NB_PERSON - N_TRAIN;
@@ -122,36 +121,29 @@ end
 
 
 %% ----------------- Testing Phase ----------------- %%
-dataTrain   = dataSet(:,        1:N_TRAIN);
-dataTest    = dataSet(:,N_TRAIN+1:    end);
+%dataTrain   = dataSet(:,        1:N_TRAIN);
+%dataTest    = dataSet(:,N_TRAIN+1:    end);
 
-fisherFeaturesTest = cell(NB_CAMERA,NB_PERSON - N_TRAIN);
-for cam = 1:NB_CAMERA
-    for pers = 1:NB_PERSON - N_TRAIN
-        fisherFeaturesTest{cam,pers} = zeros(size(dataTest{cam,pers},1),  d(end), size(dataTest{cam,pers},3));   
-        for i = 1:size(dataTest{cam,pers},3)
-            fisherFeaturesTest{cam,pers}(:,:,i) = dataTest{cam,pers}(:,:,i) * fisherAxes(:,d);
-        end
-    end 
+for i = 1:NB_CAMERA
+    disp(size(dataTest{i}));
 end
-
 accuracy = zeros(NB_CAMERA, NB_CAMERA);
 for cameraSource = 1:NB_CAMERA
     for cameraTarget = 1:NB_CAMERA
-        for person = 1:NB_PERSON - N_TRAIN
-            P_Source = dataTest{cameraSource,person} * fisherAxes(:,d);
-            P_Target = dataTest{cameraSource,person} * fisherAxes(:,d);
+        for i = 1:size(dataTest{cameraSource,1},3)
+            P_Source = dataTest{cameraSource}(:,:,i) * fisherAxes(:,d);
+            P_Target = dataTest{cameraSource}(:,:,i) * fisherAxes(:,d);
 
             P_Bad    = cell(NB_CAMERA - 2, 1);
             for badCamera = 1:NB_CAMERA
                 if badCamera == cameraSource || badCamera == cameraTarget
                     continue;
                 end
-                P_Bad{badCamera} = dataTest{cameraSource,person} * fisherAxes(:,d);
+                P_Bad{badCamera} = dataTest{cameraSource}(:,:,i) * fisherAxes(:,d);
             end
 
             %2/ Good Camera
-            P_Good = dataTest{cameraTarget,person} * fisherAxes(:,d);
+            P_Good = dataTest{cameraTarget}(:,:,i) * fisherAxes(:,d);
             rightDist = norm(P_Good - P_Target);
 
             %3/ Bad Camera
@@ -162,9 +154,9 @@ for cameraSource = 1:NB_CAMERA
                     cnt_pass = cnt_pass + 1;
                     continue;
                 end
-                for i = 1:NB_PERSON - N_TRAIN
-                    P_Wrong = dataTest{badCamera,i} * fisherAxes(:,d);
-                    wrongDist(badCamera - cnt_pass,i) = norm(P_Wrong - P_Bad{badCamera});
+                for j = 1:NB_PERSON - N_TRAIN
+                    P_Wrong = dataTest{badCamera}(:,:,j) * fisherAxes(:,d);
+                    wrongDist(badCamera - cnt_pass,j) = norm(P_Wrong - P_Bad{badCamera});
                 end
             end
             [minValue, minIdx]  = min(wrongDist);
@@ -180,12 +172,15 @@ end
 accuracy = accuracy / (NB_PERSON - N_TRAIN);
 disp(accuracy);
 
-Source = dataTest{1,1} * fisherAxes(:,d); 
-Target = dataTest{2,1} * fisherAxes(:,d); dist_Target = norm(Target - Source);
+figure("Name", "Ou est-ce que j'ai rangé Pull ?")
+plotConfusionMatrix(accuracy, '2D-LDA');
+
+Source = dataTest{1}(:,:,1) * fisherAxes(:,d); 
+Target = dataTest{2}(:,:,1) * fisherAxes(:,d); dist_Target = norm(Target - Source);
 
 Other  = cell(NB_PERSON - N_TRAIN);
 for i = 1:NB_PERSON - N_TRAIN
-    Other{i} = dataTest{3,i} * fisherAxes(:,d);
+    Other{i} = dataTest{3}(:,:,i) * fisherAxes(:,d);
 end
 figure("Name", "Ou est mon Pull putain ?")
 subplot(NB_CAMERA, NB_PERSON - N_TRAIN, 1            ); imshow(mat2gray(Source)); title('Source');
@@ -195,5 +190,3 @@ for i = 1:NB_PERSON - N_TRAIN
     subplot(NB_CAMERA, NB_PERSON - N_TRAIN, i + ((NB_PERSON - N_TRAIN) * 2)); imshow(mat2gray(Other{i})); title(num2str(dist_Wrong));
 end
 
-figure("Name", "Ou est-ce que j'ai rangé Pull ?")
-plotConfusionMatrix(accuracy, '2D-LDA');
