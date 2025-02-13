@@ -1,11 +1,14 @@
-function accuracy = evaluate(input, output, X, show)
+function accuracy = evaluate(input, output, X, bias, show)
     if nargin < 4
+        bias = zeros(size(X,1),1);
+    end
+    if nargin < 5
         show = false;
     end
 
     predict = cell(size(input,2),1);
     for k = 1:size(input,2)
-        predict{k} = X * input{k};
+        predict{k} = X * input{k} + bias;
     end
 
     [class, ~] = imageClassify(output,predict);

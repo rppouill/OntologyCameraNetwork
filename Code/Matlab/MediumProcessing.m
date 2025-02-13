@@ -2,7 +2,7 @@ clear all; close all; % clc;
 addpath('./tools');
 
 DATASET_PATH = './dataSet/';
-DATASET_NAME = 'ImageSelectedwithD/';
+DATASET_NAME = 'ImageSelected/';
 NB_CAMERA = 3; NB_PERSON = 9; 
 NB_VECTOR = 8; IMG_SIZE  = [30,30];
 
@@ -103,10 +103,12 @@ for nVector = range_nVector
             A = cell2mat(pcaEigVec(i,1:L));
             B = cell2mat(pcaEigVec(j,1:L));
 
-            X = B * pinv(A);
+            M = polyfit(A, B, 1);
+            X    = M(1);
+            bias = M(2);
 
             M_LS{i,j,nVector} = X;
-            accuracyMetricLS(nVector) = accuracyMetricLS(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X);
+            accuracyMetricLS(nVector) = accuracyMetricLS(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, bias);
 
             if nVector == N_VECTOR_EXAMPLE && i == 1 && j == 2 && SHOW
                 evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X, true);
@@ -138,10 +140,12 @@ for nVector = range_nVector
             %    continue;
             %end
             
-            X = pcaEigVec{j,1} * pinv(pcaEigVec{i,1});
+            M = polyfit(pcaEigVec{j,1}, pcaEigVec{i,1}, 1);
+            X = M(1); bias = M(2);
             for k = 2:L
-                X_tmp = pcaEigVec{j,k} * pinv(pcaEigVec{i,k});
-                X = (X * alpha) + (X_tmp * (1 - alpha));
+                M = polyfit(pcaEigVec{j,k}, pcaEigVec{i,k}, 1);
+                X = (X * alpha) + (M(1) * (1 - alpha));
+                bias = (bias * alpha) + (M(2) * (1 - alpha));
             end
             M_LSA{i,j,nVector} = X;
             
@@ -150,7 +154,7 @@ for nVector = range_nVector
                 saveas(gcf, [RESULT_FOLDER, 'LeastSquareAdaptative.png']);
             end
 
-            accuracyMetricLSA(nVector) = accuracyMetricLSA(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X);
+            accuracyMetricLSA(nVector) = accuracyMetricLSA(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, bias);
         end
     end
     
@@ -209,12 +213,17 @@ for nVector = range_nVector
             %    continue;
             %end
 
-            X = pcaEigVec{j,1} * pinv(pcaEigVec{i,1});
+            X       = pcaEigVec{j,1} * pinv(pcaEigVec{i,1});
+            bias    = (2/NB_CAMERA) * sum(pcaEigVec{j,1} - X * pcaEigVec{i,1});
             for k = 1:L
-                pred    = X     * pcaEigVec{i,k};
-                error   = pred  - pcaEigVec{j,k};
-                grad    = error * pcaEigVec{i,k}';
-                X       = X - eta * grad;
+                pred    = X     * pcaEigVec{i,k} + bias;
+                mse     = mean((pred - pcaEigVec{j,k}).^2);
+                
+                error   = pred - pcaEigVec{j,k};
+                dw      = (2/NB_CAMERA) * (error * pcaEigVec{i,k}');
+                db      = (2/NB_CAMERA) * sum(error);
+
+                X       = X - eta * dw;
             end
             
             M_GR{i,j,nVector} = X;
