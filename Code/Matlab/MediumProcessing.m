@@ -2,7 +2,7 @@ clear all; close all; % clc;
 addpath('./tools');
 
 DATASET_PATH = './dataSet/';
-DATASET_NAME = 'ImageSelectedwithD/';
+DATASET_NAME = 'ImageSelected/';
 NB_CAMERA = 3; NB_PERSON = 9; 
 NB_VECTOR = 8; IMG_SIZE  = [30,30];
 
@@ -269,6 +269,61 @@ zlabel('Accuracy');         zlim([0, 1]);
 title('Accuracy evolution with Eta and Number of Vector');
 saveas(gcf, [RESULT_FOLDER, 'EtaMetric.png']);
 
+%% Polynomial Regression %%
+tic
+accuracyMetricPL = zeros(1, length(range_nVector));
+M_PL = cell(NB_CAMERA, NB_CAMERA, NB_VECTOR);
+for nVector = range_nVector
+    %% Compute the Eigentarget %%
+    pcaEigVec = cellfun(@(x) x(:,1:nVector), eigVec, 'UniformOutput', false);
+    
+    %% Main Processing %%
+    order = 2;
+    for i = 1:NB_CAMERA
+        for j = 1:NB_CAMERA
+            %if i == j
+            %    continue;
+            %end
+
+            X = polyfit(pcaEigVec{i,1}, pcaEigVec{j,1}, order);
+            M_PL{i,j,nVector} = X;
+    
+            if nVector == N_VECTOR_EXAMPLE && i == 1 && j == 2 && SHOW
+                evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X, true);
+                saveas(gcf, [RESULT_FOLDER, 'GradientDescent.png']);
+            end
+
+            accuracyMetricPL(nVector) = accuracyMetricPL(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, 'poly');
+        end
+    end
+    accuracyMetricPL(nVector) = accuracyMetricPL(nVector) / (NB_CAMERA * NB_CAMERA);
+end
+toc
+%% Find best tuple order - vector with Polynomial Regression %%
+order = 1:9;
+orderMetricPL = zeros(nVector, length(order));
+for nVector = range_nVector
+    for o = order
+        pcaEigVec = cellfun(@(x) x(:,1:nVector), eigVec, 'UniformOutput', false);
+
+        for i = 1:NB_CAMERA
+            for j = 1:NB_CAMERA
+                X = polyfit(pcaEigVec{i,1}, pcaEigVec{j,1}, o);
+                orderMetricPL(nVector, o) = mean([evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X, 'poly') orderMetricPL(nVector, o)]);
+            end
+        end
+    end
+end
+
+figure("Name", "Order Metric");
+contourf(order, range_nVector, orderMetricPL);
+colorbar; colormap('jet'); grid on; grid minor;
+xlabel('Order');
+ylabel('Number of Vector');
+zlabel('Accuracy');         zlim([0, 1]);
+title('Accuracy evolution with Order and Number of Vector');
+saveas(gcf, [RESULT_FOLDER, 'OrderMetric.png']);
+
 
 
 
@@ -278,6 +333,7 @@ plot(range_nVector, accuracyMetric, '*-');
 plot(range_nVector, accuracyMetricLS, '*-');
 plot(range_nVector, accuracyMetricLSA,'*-');
 plot(range_nVector, accuracyMetricGR, '*-');
+plot(range_nVector, accuracyMetricPL, '*-');
 hold off;
 
 grid on; grid minor;
@@ -288,6 +344,6 @@ legend('Without Transformation', 'Least Square', 'Least Square Adaptative', 'Gra
 saveas(gcf, [RESULT_FOLDER, 'Accuracy.png']);
 
 % Save differents transformations matrix
-save([RESULT_FOLDER, 'transformations.mat'], 'M_LS', 'M_LSA', 'M_GR', 'eigVec', 'L', 'NB_VECTOR', 'NB_CAMERA', 'NB_PERSON', 'IMG_SIZE');
+save([RESULT_FOLDER, 'transformations.mat'], 'M_LS', 'M_LSA', 'M_GR','M_PL', 'eigVec', 'L', 'NB_VECTOR', 'NB_CAMERA', 'NB_PERSON', 'IMG_SIZE');
 
 
