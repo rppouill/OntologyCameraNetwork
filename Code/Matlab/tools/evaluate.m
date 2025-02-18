@@ -1,14 +1,34 @@
-function accuracy = evaluate(input, output, X, bias, show)
-    if nargin < 4
-        bias = zeros(size(X,1),1);
-    end
-    if nargin < 5
-        show = false;
+function accuracy = evaluate(varargin)
+    % EVALUATE Evaluate the accuracy of the prediction
+    %   EVALUATE(X, input, output, show) Evaluate the accuracy of the prediction
+    %   input is the input data
+    %   output is the output data
+    %   X is the matrix of the prediction
+    %   show is a boolean to show the prediction
+    %   Return the accuracy of the prediction
+
+    X       = varargin{3};
+    input   = varargin{1};
+    output  = varargin{2};
+    
+    show = false; poly = false;
+    for i = 3:size(varargin,2)
+        if strcmp(varargin{i}, 'show')
+            show = true;
+        end
+        if strcmp(varargin{i}, 'poly')
+            poly = true;
+        end
     end
 
     predict = cell(size(input,2),1);
     for k = 1:size(input,2)
-        predict{k} = X * input{k} + bias;
+        if poly
+            predict{k} = polyval(X, input{k});
+        else
+            predict{k} = X*input{k};
+        end
+        
     end
 
     [class, ~] = imageClassify(output,predict);

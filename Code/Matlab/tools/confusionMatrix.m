@@ -1,4 +1,10 @@
-function accuracy = confusionMatrix(eigVec, M, bias)
+function accuracy = confusionMatrix(varargin)
+    eigVec = varargin{1};
+    M      = varargin{2};
+    poly = false;
+    if nargin >= 3 && strcmp(varargin{3}, 'poly')
+        poly = true;
+    end
     [NB_CAMERA, NB_PERSON]  = size(eigVec);
      N_VECTOR_EXAMPLE       = size(eigVec{1,1}, 2);
 
@@ -16,14 +22,23 @@ function accuracy = confusionMatrix(eigVec, M, bias)
             for person = 1:NB_PERSON
                 % 1/ Init Camera
                 P_Source = eigVec{cameraSource,person}(:,1:N_VECTOR_EXAMPLE);
-                P_Target = M{cameraSource,cameraTarget,N_VECTOR_EXAMPLE} * P_Source + bias;
 
+                if poly
+                    P_Target = polyval(M{cameraSource,cameraTarget,N_VECTOR_EXAMPLE}, P_Source);
+                else
+                    P_Target = M{cameraSource,cameraTarget,N_VECTOR_EXAMPLE} * P_Source;
+                end
+                
                 P_Bad    = cell(NB_CAMERA - 2, 1);
                 for badCamera = 1:NB_CAMERA
                     if badCamera == cameraSource || badCamera == cameraTarget
                         continue;
                     end
-                    P_Bad{badCamera} = M{cameraSource,badCamera,N_VECTOR_EXAMPLE} * P_Source + bias;
+                    if poly
+                        P_Bad{badCamera} = polyval(M{cameraSource,badCamera,N_VECTOR_EXAMPLE}, P_Source);
+                    else
+                        P_Bad{badCamera} = M{cameraSource,badCamera,N_VECTOR_EXAMPLE} * P_Source;
+                    end
                 end
 
                 %2/ Good Camera

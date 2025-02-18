@@ -1,8 +1,8 @@
 clear all; close all; % clc;
 addpath('./tools'); addpath('./Transformation'); 
 
-DATASET_PATH = './dataSet/';
-DATASET_NAME = 'ImageSelectedwithD/';
+%DATASET_NAME = 'ImageSelectedwithD/';
+DATASET_NAME = 'ImageSelected/';
 %DATASET_NAME = 'NewDataset/';
 
 RESULT_FOLDER = ['results/', DATASET_NAME];
@@ -20,8 +20,8 @@ disp('Date: 2025-01-05');
 disp('Version: 1.0');
 
 
-Global_M = {M_LS, M_LSA, M_GR};
-Global_Method = {'Least Square', 'Least Square Adaptatif', 'Gradient Descent'};
+Global_M = {M_LS, M_LSA, M_GR, M_PL};
+Global_Method = {'Least Square', 'Least Square Adaptatif', 'Gradient Descent', 'Poly'};
 
 figure("Name", "Confusion Matrix");
 for meth = 1:size(Global_M,2)
@@ -29,8 +29,13 @@ for meth = 1:size(Global_M,2)
     Method = Global_Method{meth};
         
     set(gcf, 'Position', [100, 100, 1200, 400]);
-    accuracy_Test = confusionMatrix(eigVec(:,L+1:end), M);
-    subplot(1,3,meth); plotConfusionMatrix(accuracy_Test, 'Dataset Test');
+    txt = 'Yaousa';
+    if meth == 4
+        txt = 'poly';
+    end
+        
+    accuracy_Test = confusionMatrix(eigVec(:,L+1:end), M, txt);
+    subplot(1,4,meth); plotConfusionMatrix(accuracy_Test, 'Dataset Test');
     title(Method);
     
     %saveas(gcf, [RESULT_FOLDER, Method, '.png']);
