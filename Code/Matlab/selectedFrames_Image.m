@@ -81,10 +81,11 @@ end
 
 %% Compute the D vector
 %% Create the foreground model and save the images into the folder
-THRESH_RHO    = 0.99;       OMEGA = 3;
-ALPHA         = 0.1 ; HALF_OMEGA = round(OMEGA / 2);
-THRESH_MIN_PIXEL = [200, 200, 200];
-THRESH_MAX_PIXEL = [500, 500, 500];
+THRESH_RHO    = 0.99;       OMEGA = 2;
+ALPHA         = 0.3 ; HALF_OMEGA = round(OMEGA / 2);
+THRESH_MIN_PIXEL = [140, 260, 300]; 
+THRESH_MAX_PIXEL = [500, 700, 500];
+THRESH_SPECIAL_ANDREA = [100,200]; % Camera 3 Person 2
 
 ALL_D           = cell(NB_CAMERA, NB_PERSON);
 D               = cell(NB_CAMERA, NB_PERSON);
@@ -121,15 +122,43 @@ for cam = 1:NB_CAMERA
                     end
                 end
                 
-                %mask = imerode(imdilate(mask, SE), SE);
+                
+                mask = bwareaopen(mask, 4);
+                mask = imclose(mask, strel('line', 3, 90));
+                mask = imclose(mask, strel('disk', 2, 0));
+                mask = imopen(mask, strel('line', 10, 90));
+                % Get biggest particules
+                stats = regionprops(mask, 'Area', 'BoundingBox');
+                if ~isempty(stats)
+                    [~, idxMax] = max([stats.Area]);
+                    stats = stats(idxMax);
+                    buffMask = mask;
+                    mask = zeros(size(mask));
+                    mask(round(stats.BoundingBox(2)):floor(stats.BoundingBox(2)+stats.BoundingBox(4)), ...
+                         round(stats.BoundingBox(1)):floor(stats.BoundingBox(1)+stats.BoundingBox(3))) = ...
+                         buffMask(round(stats.BoundingBox(2)):floor(stats.BoundingBox(2)+stats.BoundingBox(4)), ...
+                         round(stats.BoundingBox(1)):floor(stats.BoundingBox(1)+stats.BoundingBox(3)));
+                     mask = bwconvhull(mask);
+                 end
                 pixel = sum(mask(:));
-                if pixel > THRESH_MIN_PIXEL(cam) && pixel < THRESH_MAX_PIXEL(cam)
-                    N_SELECTED_FRAMES(cam,pers) = N_SELECTED_FRAMES(cam,pers) + 1;
-                    SELECTED_FRAMES{cam,pers}(:,:,N_SELECTED_FRAMES(cam,pers)) = frame;
-                    SELECTED_MASK  {cam,pers}(:,:,N_SELECTED_FRAMES(cam,pers)) = mask;
-                    
-                    MEAN_D(cam,pers) = MEAN_D(cam,pers) + pixel;
-                    D{cam,pers}(end+1) = pixel;
+                if(cam == 3 && pers == 2)
+                    if pixel > THRESH_SPECIAL_ANDREA(1) && pixel < THRESH_SPECIAL_ANDREA(2)
+                        N_SELECTED_FRAMES(cam,pers) = N_SELECTED_FRAMES(cam,pers) + 1;
+                        SELECTED_FRAMES{cam,pers}(:,:,N_SELECTED_FRAMES(cam,pers)) = frame;
+                        SELECTED_MASK  {cam,pers}(:,:,N_SELECTED_FRAMES(cam,pers)) = mask;
+                        
+                        MEAN_D(cam,pers) = MEAN_D(cam,pers) + pixel;
+                        D{cam,pers}(end+1) = pixel;
+                    end
+                else
+                    if pixel > THRESH_MIN_PIXEL(cam) && pixel < THRESH_MAX_PIXEL(cam)
+                        N_SELECTED_FRAMES(cam,pers) = N_SELECTED_FRAMES(cam,pers) + 1;
+                        SELECTED_FRAMES{cam,pers}(:,:,N_SELECTED_FRAMES(cam,pers)) = frame;
+                        SELECTED_MASK  {cam,pers}(:,:,N_SELECTED_FRAMES(cam,pers)) = mask;
+                        
+                        MEAN_D(cam,pers) = MEAN_D(cam,pers) + pixel;
+                        D{cam,pers}(end+1) = pixel;
+                    end
                 end
                 background_model{cam,pers} = ((1-ALPHA) * background_model{cam,pers}) + (ALPHA * frame);
                 MASK            {cam,pers}(:,:,nFrame)  = mask;
@@ -190,26 +219,68 @@ save([FOLDER_PATH, 'Selected_Frames.mat'],  'SELECTED_FRAMES', ...
                                             'MASK', ...
                                             'D', ...
                                             'MEAN_D', ...
+                                            'background_model', ...
                                             'NB_CAMERA', 'NB_PERSON', 'IMG_SIZE');
 
 
 %Display D
 for cam = 1:NB_CAMERA
     figure("Name", ['D - Camera ', int2str(cam)]);
-    for i = 1:NB_PERSON
-        if isempty(Camera{cam,i})
+    for pers = 1:NB_PERSON
+        if isempty(Camera{cam,pers})
             continue;
         end
-        subplot(2,3,i);
-        plot(ALL_D{cam,i});
-        hold on; plot(ones(1,length(ALL_D{cam,i})) * THRESH_MIN_PIXEL(cam), 'r--'); hold off;
-        hold on; plot(ones(1,length(ALL_D{cam,i})) * THRESH_MAX_PIXEL(cam), 'r--'); hold off;
-        xlim([1, length(ALL_D{cam,i})]);
+        subplot(2,3,pers);
+        plot(ALL_D{cam,pers});
+        if(cam == 3 && pers == 2)
+            hold on; plot(ones(1,length(ALL_D{cam,pers})) * THRESH_SPECIAL_ANDREA(1), 'r--'); hold off;
+            hold on; plot(ones(1,length(ALL_D{cam,pers})) * THRESH_SPECIAL_ANDREA(2), 'r--'); hold off;
+        else
+            hold on; plot(ones(1,length(ALL_D{cam,pers})) * THRESH_MIN_PIXEL(cam), 'r--'); hold off;
+            hold on; plot(ones(1,length(ALL_D{cam,pers})) * THRESH_MAX_PIXEL(cam), 'r--'); hold off;
+        end
+        xlim([1, length(ALL_D{cam,pers})]);
         ylim([0, prod(IMG_SIZE)]);
         xlabel('Frame');
         ylabel('Number of Pixels');
-        title(['Person ', int2str(i)]);
+        title(['Person ', int2str(pers)]);
         grid on;
         grid minor;
+    end
+end
+
+
+SHOWING = false;
+if SHOWING
+    % Display 5 Selected Frames
+    for cam = 1:NB_CAMERA
+        figure("Name", ['Selected Frames - Camera ', int2str(cam)]);
+        for pers = 1:NB_PERSON
+            if isempty(SELECTED_FRAMES{cam,pers})
+                continue;
+            end
+            for i = 1:5
+                if i > N_SELECTED_FRAMES(cam,pers)
+                    continue;
+                end
+                subplot(NB_PERSON, 5, ((pers-1)*5) + i); imshow(SELECTED_FRAMES{cam,pers}(:,:,i));
+            end
+        end
+    end
+
+    % Display 5 Selected Mask
+    for cam = 1:NB_CAMERA
+        figure("Name", ['Selected Mask - Camera ', int2str(cam)]);
+        for pers = 1:NB_PERSON
+            if isempty(SELECTED_MASK{cam,pers})
+                continue;
+            end
+            for i = 1:5
+                if i > N_SELECTED_FRAMES(cam,pers)
+                    continue;
+                end
+                subplot(NB_PERSON, 5, (pers-1)*5 + i); imshow(SELECTED_MASK{cam,pers}(:,:,i));
+            end
+        end
     end
 end
