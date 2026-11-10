@@ -1,4 +1,10 @@
-clear all; close all; % clc;
+clearvars -except METRIC LAMBDA; close all; % clc;
+% Distance used for the association (see tools/computeDistance.m):
+%   'spectral' (default, original behaviour), 'euclidean', 'seuclidean',
+%   'mahalanobis', 'cosine', 'subspace'
+% Usage: matlab -nodesktop -nosplash -r "METRIC='mahalanobis'; LAMBDA=0.1; run('MediumProcessing.m'); exit"
+if ~exist('METRIC', 'var'), METRIC = 'spectral'; end
+if ~exist('LAMBDA', 'var'), LAMBDA = 0.1;        end   % shrinkage of the covariance (mahalanobis)
 addpath('./tools');
 
 DATASET_PATH = './dataSet/';
@@ -51,10 +57,14 @@ end
 eigVec = buildEvent(camera, NB_VECTOR, D);
 
 % Result directly 
-RESULT_FOLDER = ['results/', DATASET_NAME];
+RESULT_FOLDER = ['results/', DATASET_NAME, METRIC, '/'];
 if ~exist(RESULT_FOLDER, 'dir')
     mkdir(RESULT_FOLDER);
 end
+
+%% Dataset for the Training %%
+training_ratio = 0.7;
+L = floor(NB_PERSON * training_ratio);
 
 accuracyMetric = zeros(1, NB_VECTOR);
 for nVector = 1:NB_VECTOR
@@ -65,7 +75,8 @@ for nVector = 1:NB_VECTOR
             %    continue;
             %end
             I = eye(IMG_SIZE(1) * IMG_SIZE(2), IMG_SIZE(1) * IMG_SIZE(2));
-            accuracyMetric(nVector) = accuracyMetric(nVector) + evaluate(pcaEigVec(i,:), pcaEigVec(j,:), I);
+            params = residualParams(pcaEigVec(i,1:L), pcaEigVec(j,1:L), I, false, METRIC, LAMBDA);
+            accuracyMetric(nVector) = accuracyMetric(nVector) + evaluate(pcaEigVec(i,:), pcaEigVec(j,:), I, 'metric', METRIC, 'params', params);
         end
     end
     accuracyMetric(nVector) = accuracyMetric(nVector) / (NB_CAMERA * NB_CAMERA);
@@ -81,9 +92,6 @@ for i = 1:NB_CAMERA
 end
 saveas(gcf, [RESULT_FOLDER, 'Dataset.png']);
 
-%% Dataset for the Training %%
-training_ratio = 0.7;
-L = floor(NB_PERSON * training_ratio);
 
 %% ---------- Least Square Method ---------- %%
 tic 
@@ -108,7 +116,8 @@ for nVector = range_nVector
             bias = M(2);
 
             M_LS{i,j,nVector} = X;
-            accuracyMetricLS(nVector) = accuracyMetricLS(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, bias);
+            params = residualParams(pcaEigVec(i,1:L), pcaEigVec(j,1:L), X, false, METRIC, LAMBDA);
+            accuracyMetricLS(nVector) = accuracyMetricLS(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, bias, 'metric', METRIC, 'params', params);
 
             if nVector == N_VECTOR_EXAMPLE && i == 1 && j == 2 && SHOW
                 evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X, true);
@@ -154,7 +163,8 @@ for nVector = range_nVector
                 saveas(gcf, [RESULT_FOLDER, 'LeastSquareAdaptative.png']);
             end
 
-            accuracyMetricLSA(nVector) = accuracyMetricLSA(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, bias);
+            params = residualParams(pcaEigVec(i,1:L), pcaEigVec(j,1:L), X, false, METRIC, LAMBDA);
+            accuracyMetricLSA(nVector) = accuracyMetricLSA(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, bias, 'metric', METRIC, 'params', params);
         end
     end
     
@@ -181,7 +191,8 @@ for nVector = range_nVector
                     X_tmp = pcaEigVec{j,k} * pinv(pcaEigVec{i,k});
                     X = (X * a) + (X_tmp * (1 - a));
                 end
-                alphaMetricLSA(nVector, round(a*10)) = mean([evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X) alphaMetricLSA(nVector, round(a*10))]);
+                params = residualParams(pcaEigVec(i,1:L), pcaEigVec(j,1:L), X, false, METRIC, LAMBDA);
+                alphaMetricLSA(nVector, round(a*10)) = mean([evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X, 'metric', METRIC, 'params', params) alphaMetricLSA(nVector, round(a*10))]);
             end
         end
     end
@@ -232,7 +243,8 @@ for nVector = range_nVector
                 saveas(gcf, [RESULT_FOLDER, 'GradientDescent.png']);
             end
 
-            accuracyMetricGR(nVector) = accuracyMetricGR(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X);
+            params = residualParams(pcaEigVec(i,1:L), pcaEigVec(j,1:L), X, false, METRIC, LAMBDA);
+            accuracyMetricGR(nVector) = accuracyMetricGR(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, 'metric', METRIC, 'params', params);
         end
     end
     accuracyMetricGR(nVector) = accuracyMetricGR(nVector) / (NB_CAMERA * NB_CAMERA);
@@ -259,7 +271,8 @@ for nVector = range_nVector
                     grad    = error * pcaEigVec{i,k}';
                     X       = X - e * grad;
                 end
-                etaMetricGR(nVector, round(e*10)) = mean([evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X) etaMetricGR(nVector, round(e*10))]);
+                params = residualParams(pcaEigVec(i,1:L), pcaEigVec(j,1:L), X, false, METRIC, LAMBDA);
+                etaMetricGR(nVector, round(e*10)) = mean([evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X, 'metric', METRIC, 'params', params) etaMetricGR(nVector, round(e*10))]);
                 %etaMetricGR(nVector, round(e*100)) = ... 
                 %        mean([evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X) 
                 %                etaMetricGR(nVector, round(e*100))]);
@@ -302,7 +315,8 @@ for nVector = range_nVector
                 saveas(gcf, [RESULT_FOLDER, 'GradientDescent.png']);
             end
 
-            accuracyMetricPL(nVector) = accuracyMetricPL(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, 'poly');
+            params = residualParams(pcaEigVec(i,1:L), pcaEigVec(j,1:L), X, true, METRIC, LAMBDA);
+            accuracyMetricPL(nVector) = accuracyMetricPL(nVector) + evaluate(pcaEigVec(i,L:end), pcaEigVec(j,L:end), X, 'poly', 'metric', METRIC, 'params', params);
         end
     end
     accuracyMetricPL(nVector) = accuracyMetricPL(nVector) / (NB_CAMERA * NB_CAMERA);
@@ -318,7 +332,8 @@ for nVector = range_nVector
         for i = 1:NB_CAMERA
             for j = 1:NB_CAMERA
                 X = polyfit(pcaEigVec{i,1}, pcaEigVec{j,1}, o);
-                orderMetricPL(nVector, o) = mean([evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X, 'poly') orderMetricPL(nVector, o)]);
+                params = residualParams(pcaEigVec(i,1:L), pcaEigVec(j,1:L), X, true, METRIC, LAMBDA);
+                orderMetricPL(nVector, o) = mean([evaluate(pcaEigVec(i,:), pcaEigVec(j,:), X, 'poly', 'metric', METRIC, 'params', params) orderMetricPL(nVector, o)]);
             end
         end
     end
@@ -355,4 +370,35 @@ saveas(gcf, [RESULT_FOLDER, 'Accuracy.png']);
 % Save differents transformations matrix
 save([RESULT_FOLDER, 'transformations.mat'], 'M_LS', 'M_LSA', 'M_GR','M_PL', 'eigVec', 'L', 'NB_VECTOR', 'NB_CAMERA', 'NB_PERSON', 'IMG_SIZE');
 
+% Save the accuracies for the comparison between metrics
+save([RESULT_FOLDER, 'accuracy.mat'], 'METRIC', 'LAMBDA', 'range_nVector', ...
+     'accuracyMetric', 'accuracyMetricLS', 'accuracyMetricLSA', 'accuracyMetricGR', 'accuracyMetricPL');
 
+
+%% ---------- Local functions ---------- %%
+function params = residualParams(A, B, X, poly, metric, lambda)
+    % RESIDUALPARAMS Statistics of the prediction residuals R = B - f(A) on the training set
+    %   A, B   : cells {1 x L} of eigenvectors of the source / target camera (training persons)
+    %   X      : transformation (matrix, scalar, or polynomial coefficients if poly)
+    %   lambda : shrinkage towards a scaled identity, the covariance (D x D) being
+    %            estimated with far fewer samples than dimensions
+    params = struct();
+    if ~any(strcmp(metric, {'seuclidean', 'mahalanobis'}))
+        return;
+    end
+    A = cell2mat(A); B = cell2mat(B);
+    if poly
+        P = polyval(X, A);
+    else
+        P = X * A;
+    end
+    R = B - P;                                  % D x (L * nVector)
+    if strcmp(metric, 'seuclidean')
+        params.var = var(R, 0, 2) + eps;
+    else
+        S = cov(R');                            % D x D
+        D = size(S, 1);
+        S = (1 - lambda) * S + lambda * (trace(S) / D) * eye(D);
+        params.SigmaInv = inv(S);               % inverted once per camera pair (S is well conditioned thanks to the shrinkage)
+    end
+end
