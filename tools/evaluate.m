@@ -12,7 +12,14 @@ function accuracy = evaluate(varargin)
     output  = varargin{2};
     
     show = false; poly = false;
+    metric = 'spectral'; params = struct();
     for i = 3:size(varargin,2)
+        if strcmp(varargin{i}, 'metric')
+            metric = varargin{i+1};
+        end
+        if strcmp(varargin{i}, 'params')
+            params = varargin{i+1};
+        end
         if strcmp(varargin{i}, 'show')
             show = true;
         end
@@ -31,7 +38,7 @@ function accuracy = evaluate(varargin)
         
     end
 
-    [class, ~] = imageClassify(output,predict);
+    [class, ~] = imageClassify(output, predict, metric, params);
     accuracy = computeAccuracy(class);
 
     if show
