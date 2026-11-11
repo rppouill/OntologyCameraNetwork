@@ -5,15 +5,6 @@ function accuracy = confusionMatrix(varargin)
     if nargin >= 3 && strcmp(varargin{3}, 'poly')
         poly = true;
     end
-    metric = 'spectral'; params = struct();
-    for k = 3:nargin
-        if strcmp(varargin{k}, 'metric')
-            metric = varargin{k+1};
-        end
-        if strcmp(varargin{k}, 'params')
-            params = varargin{k+1};
-        end
-    end
     [NB_CAMERA, NB_PERSON]  = size(eigVec);
      N_VECTOR_EXAMPLE       = size(eigVec{1,1}, 2);
 
@@ -52,7 +43,7 @@ function accuracy = confusionMatrix(varargin)
 
                 %2/ Good Camera
                 P_Good = eigVec{cameraTarget,person}(:,1:N_VECTOR_EXAMPLE);
-                rightDist = computeDistance(P_Good, P_Target, metric, params);
+                rightDist = norm(P_Good - P_Target);
 
                 %3/ Bad Camera
                 wrongDist = zeros(NB_CAMERA - 2,NB_PERSON,1);
@@ -64,7 +55,7 @@ function accuracy = confusionMatrix(varargin)
                     end
                     for i = 1:NB_PERSON
                         P_Wrong = eigVec{badCamera,i}(:,1:N_VECTOR_EXAMPLE);
-                        wrongDist(badCamera - cnt_pass,i) = computeDistance(P_Wrong, P_Bad{badCamera}, metric, params);
+                        wrongDist(badCamera - cnt_pass,i) = norm(P_Wrong - P_Bad{badCamera});
                     end
                 end
                 [minValue, minIdx]  = min(wrongDist);
