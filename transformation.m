@@ -1,12 +1,11 @@
-clearvars -except METRIC; close all; % clc;
-if ~exist('METRIC', 'var'), METRIC = 'spectral'; end   % folder written by MediumProcessing.m
+clear all; close all; % clc;
 addpath('./tools'); addpath('./Transformation'); 
 
 %DATASET_NAME = 'ImageSelectedwithD/';
 DATASET_NAME = 'ImageSelected/';
 %DATASET_NAME = 'NewDataset/';
 
-RESULT_FOLDER = ['results/', DATASET_NAME, METRIC, '/'];
+RESULT_FOLDER = ['results/', DATASET_NAME];
 load([RESULT_FOLDER, 'transformations.mat']);
 
 N_VECTOR_EXAMPLE = 5;
